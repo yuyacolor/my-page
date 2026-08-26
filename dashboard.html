@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>會員中心 - Supabase Sample</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+         background:#f5f5f7; display:flex; justify-content:center; align-items:center;
+         min-height:100vh; margin:0; }
+  .card { background:#fff; padding:32px 40px; border-radius:12px;
+          box-shadow:0 2px 12px rgba(0,0,0,0.1); width:340px; }
+  h1 { font-size:20px; margin-bottom:6px; }
+  .email { font-size:13px; color:#666; margin-bottom:24px; word-break:break-all; }
+  label { display:block; font-size:13px; color:#555; margin-bottom:4px; margin-top:14px; }
+  input { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;
+          font-size:14px; box-sizing:border-box; }
+  button { width:100%; margin-top:22px; padding:11px; background:#0d6efd; color:#fff;
+           border:none; border-radius:6px; font-size:15px; cursor:pointer; }
+  button:hover { background:#0b5ed7; }
+  .logout { background:#6c757d; margin-top:10px; }
+  .logout:hover { background:#5c636a; }
+  .msg { margin-top:14px; font-size:13px; text-align:center; min-height:18px; }
+  .msg.error { color:#d33; }
+  .msg.ok { color:#2a8a3e; }
+  hr { margin:26px 0 6px; border:none; border-top:1px solid #eee; }
+
+  .admin-link {
+    display:none; text-align:center; margin-top:16px; padding:10px;
+    background:#fbf6ea; border:1px solid #e0d3ab; border-radius:8px;
+  }
+  .admin-link a {
+    color:#8a7038; font-size:13px; font-weight:bold; text-decoration:none;
+  }
+  .admin-link a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>會員中心</h1>
+  <div class="email" id="userEmail">載入中...</div>
+
+  <form id="pwForm">
+    <label>新密碼</label>
+    <input type="password" id="newPassword" required minlength="6" placeholder="至少 6 碼">
+
+    <label>確認新密碼</label>
+    <input type="password" id="confirmPassword" required minlength="6" placeholder="再輸入一次">
+
+    <button type="submit">更新密碼</button>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <div class="admin-link" id="adminLink">
+    <a href="admin.html">📋 前往訂單管理後台 →</a>
+  </div>
+
+  <hr>
+  <button class="logout" id="logoutBtn">登出</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  const emailEl = document.getElementById("userEmail");
+  const pwForm = document.getElementById("pwForm");
+  const msg = document.getElementById("msg");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const adminLink = document.getElementById("adminLink");
+
+  // 檢查登入狀態，沒登入就踢回登入頁
+  (async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    if (!data.session) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    emailEl.textContent = "登入身分：" + data.session.user.email;
+
+    // 判斷這個帳號是不是管理員，是的話才顯示後台連結
+    // is_admin() 是先前在 Supabase 建立的 security definer function
+    const { data: isAdmin, error } = await supabaseClient.rpc("is_admin");
+    if (!error && isAdmin === true) {
+      adminLink.style.display = "block";
+    }
+  })();
+
+  pwForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const newPassword = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+
+    if (newPassword !== confirmPassword) {
+      msg.textContent = "兩次輸入的密碼不一致";
+      msg.className = "msg error";
+      return;
+    }
+
+    msg.textContent = "更新中...";
+    msg.className = "msg";
+
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      msg.textContent = "更新失敗：" + error.message;
+      msg.className = "msg error";
+    } else {
+      msg.textContent = "密碼已更新成功！";
+      msg.className = "msg ok";
+      pwForm.reset();
+    }
+  });
+
+  logoutBtn.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
+  });
+</script>
+
+</body>
+</html>

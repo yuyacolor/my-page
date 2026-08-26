@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>登入 - Supabase Sample</title>
+<title>註冊 - Supabase Sample</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
@@ -14,9 +14,9 @@
   label { display:block; font-size:13px; color:#555; margin-bottom:4px; margin-top:14px; }
   input { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;
           font-size:14px; box-sizing:border-box; }
-  button { width:100%; margin-top:22px; padding:11px; background:#0d6efd; color:#fff;
+  button { width:100%; margin-top:22px; padding:11px; background:#198754; color:#fff;
            border:none; border-radius:6px; font-size:15px; cursor:pointer; }
-  button:hover { background:#0b5ed7; }
+  button:hover { background:#157347; }
   .msg { margin-top:14px; font-size:13px; text-align:center; min-height:18px; }
   .msg.error { color:#d33; }
   .msg.ok { color:#2a8a3e; }
@@ -27,50 +27,54 @@
 <body>
 
 <div class="card">
-  <h1>禮盒訂購系統（Sample）</h1>
+  <h1>建立帳號</h1>
 
-  <form id="loginForm">
+  <form id="signupForm">
     <label>帳號（Email）</label>
     <input type="email" id="email" required placeholder="you@example.com">
 
     <label>密碼</label>
-    <input type="password" id="password" required placeholder="至少 6 碼">
+    <input type="password" id="password" required minlength="6" placeholder="至少 6 碼">
 
-    <button type="submit">登入</button>
+    <button type="submit">註冊</button>
     <div class="msg" id="msg"></div>
   </form>
 
   <div class="switch">
-    還沒有帳號？<a href="signup.html">註冊新帳號</a>
+    已經有帳號？<a href="index.html">回登入頁</a>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
-  // 若已登入，直接跳去 dashboard
-  supabaseClient.auth.getSession().then(({ data }) => {
-    if (data.session) window.location.href = "dashboard.html";
-  });
-
-  const form = document.getElementById("loginForm");
+  const form = document.getElementById("signupForm");
   const msg = document.getElementById("msg");
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    msg.textContent = "登入中...";
+    msg.textContent = "註冊中...";
     msg.className = "msg";
 
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
     if (error) {
-      msg.textContent = "登入失敗：" + error.message;
+      msg.textContent = "註冊失敗：" + error.message;
       msg.className = "msg error";
+    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+      // Supabase 的安全設計：email 已註冊過時不會直接回傳 error，
+      // 而是回傳「看似成功」但 identities 為空陣列的結果，必須自己判斷這個訊號。
+      msg.textContent = "此信箱已經註冊過，請直接登入或使用忘記密碼。";
+      msg.className = "msg error";
+    } else if (data.user && !data.session) {
+      // 正常的新註冊，且 Supabase 要求 email 驗證
+      msg.textContent = "註冊成功！請檢查信箱完成驗證後再登入。";
+      msg.className = "msg ok";
     } else {
-      msg.textContent = "登入成功，跳轉中...";
+      msg.textContent = "註冊成功，跳轉中...";
       msg.className = "msg ok";
       window.location.href = "dashboard.html";
     }

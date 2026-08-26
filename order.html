@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>鳳凰酥禮盒 線上訂購單</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+         background:#f5f5f7; margin:0; padding:24px 12px; }
+  .wrap { max-width:640px; margin:0 auto; }
+  .card { background:#fff; border-radius:12px; padding:28px 32px;
+          box-shadow:0 2px 12px rgba(0,0,0,0.08); margin-bottom:20px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:#8a7038; font-size:13px; margin-bottom:20px; }
+  h2 { font-size:15px; border-left:4px solid #b8963e; padding-left:10px; margin:26px 0 14px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .row.single { grid-template-columns:1fr; }
+  label { display:block; font-size:13px; color:#555; margin-bottom:4px; margin-top:12px; }
+  label.req::after { content:" *必填"; color:#c0392b; font-size:11px; }
+  input, select, textarea {
+    width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px;
+    font-size:14px; box-sizing:border-box; font-family:inherit;
+  }
+  textarea { resize:vertical; min-height:60px; }
+
+  .tier { display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; }
+  .tier label {
+    flex:1; min-width:150px; border:1px solid #ddd; border-radius:8px;
+    padding:10px 12px; margin:0; cursor:pointer; font-size:13px; color:#333;
+  }
+  .tier input[type="radio"] { width:auto; display:inline; margin-right:6px; }
+  .tier label.active { border-color:#b8963e; background:#fbf6ea; }
+
+  .calc { background:#fbf6ea; border-radius:8px; padding:14px 18px; margin-top:16px; }
+  .calc-row { display:flex; justify-content:space-between; font-size:14px; padding:3px 0; }
+  .calc-row.total { font-weight:bold; font-size:16px; border-top:1px solid #e0d3ab;
+                     margin-top:6px; padding-top:8px; }
+
+  button {
+    width:100%; margin-top:24px; padding:13px; background:#b8963e; color:#fff;
+    border:none; border-radius:8px; font-size:16px; cursor:pointer;
+  }
+  button:hover { background:#a3822f; }
+  button:disabled { background:#ccc; cursor:not-allowed; }
+
+  .msg { margin-top:14px; font-size:13px; text-align:center; min-height:18px; }
+  .msg.error { color:#c0392b; }
+  .msg.ok { color:#2a8a3e; font-weight:bold; }
+
+  .note { font-size:12px; color:#888; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="card">
+  <h1>🥮 鳳凰酥禮盒 線上訂購單</h1>
+  <div class="sub">長鈺溫泉飯店｜宅配訂購｜優惠訂購截止日期 2026/09/11</div>
+
+  <form id="orderForm">
+
+    <h2>訂購人資訊</h2>
+    <div class="row">
+      <div>
+        <label class="req">公司名稱</label>
+        <input type="text" id="company_name" required>
+      </div>
+      <div>
+        <label class="req">聯絡人</label>
+        <input type="text" id="contact_name" required>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label class="req">手機（必填，末 9 碼將作為匯款帳號辨識）</label>
+        <input type="tel" id="mobile" required pattern="09[0-9]{8}" placeholder="09xxxxxxxx">
+      </div>
+      <div>
+        <label>市話</label>
+        <input type="tel" id="phone">
+      </div>
+    </div>
+    <label>Email</label>
+    <input type="email" id="email">
+
+    <h2>收件資訊</h2>
+    <div class="row">
+      <div>
+        <label>收件人</label>
+        <input type="text" id="receiver_name">
+      </div>
+      <div>
+        <label>統一編號</label>
+        <input type="text" id="tax_id">
+      </div>
+    </div>
+    <label>收件地址</label>
+    <textarea id="receiver_address"></textarea>
+    <label>發票抬頭</label>
+    <input type="text" id="invoice_title">
+
+    <h2>品項選擇</h2>
+    <div class="tier" id="tierGroup">
+      <label data-price="630" data-tier="60up">
+        <input type="radio" name="tier" value="60up" data-price="630"> 訂購 60 盒以上<br>$630 / 盒
+      </label>
+      <label data-price="660" data-tier="30up">
+        <input type="radio" name="tier" value="30up" data-price="660"> 訂購 30 盒以上<br>$660 / 盒
+      </label>
+      <label data-price="720" data-tier="normal">
+        <input type="radio" name="tier" value="normal" data-price="720" checked> 一般價<br>$720 / 盒
+      </label>
+    </div>
+
+    <label class="req">訂購數量（盒）</label>
+    <input type="number" id="quantity" min="1" value="1" required>
+    <div class="note">未滿 20 盒運費 $150，20 盒以上免運費</div>
+
+    <div class="calc">
+      <div class="calc-row"><span>單價</span><span id="calcUnitPrice">$720</span></div>
+      <div class="calc-row"><span>小計</span><span id="calcSubtotal">$720</span></div>
+      <div class="calc-row"><span>運費</span><span id="calcShipping">$150</span></div>
+      <div class="calc-row total"><span>總計</span><span id="calcTotal">$870</span></div>
+    </div>
+
+    <h2>備註</h2>
+    <textarea id="note" placeholder="有特殊需求可寫在這裡"></textarea>
+
+    <button type="submit" id="submitBtn">送出訂購單</button>
+    <div class="msg" id="msg"></div>
+  </form>
+</div>
+
+<div class="card" style="font-size:12px; color:#888; line-height:1.8;">
+  ＊本單送出後，將有專人於一個工作日內與您電話確認訂單並提供匯款資訊。<br>
+  ＊預計出貨日：2026/09/14 起，依訂單順序陸續出貨。<br>
+  ＊時值中秋檔期物流配送高峰期，預定到貨日有時略有變動。
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  const qtyInput = document.getElementById("quantity");
+  const tierRadios = document.querySelectorAll('input[name="tier"]');
+  const tierLabels = document.querySelectorAll('.tier label');
+
+  const calcUnitPrice = document.getElementById("calcUnitPrice");
+  const calcSubtotal = document.getElementById("calcSubtotal");
+  const calcShipping = document.getElementById("calcShipping");
+  const calcTotal = document.getElementById("calcTotal");
+
+  function currentUnitPrice() {
+    const checked = document.querySelector('input[name="tier"]:checked');
+    return parseInt(checked.dataset.price, 10);
+  }
+
+  function recalc() {
+    const qty = Math.max(parseInt(qtyInput.value, 10) || 0, 0);
+    const unitPrice = currentUnitPrice();
+    const subtotal = qty * unitPrice;
+    const shipping = qty >= 20 ? 0 : (qty > 0 ? 150 : 0);
+    const total = subtotal + shipping;
+
+    calcUnitPrice.textContent = "$" + unitPrice.toLocaleString();
+    calcSubtotal.textContent = "$" + subtotal.toLocaleString();
+    calcShipping.textContent = "$" + shipping.toLocaleString();
+    calcTotal.textContent = "$" + total.toLocaleString();
+
+    tierLabels.forEach(l => l.classList.remove("active"));
+    document.querySelector('input[name="tier"]:checked').closest('label').classList.add("active");
+
+    return { qty, unitPrice, subtotal, shipping, total };
+  }
+
+  qtyInput.addEventListener("input", recalc);
+  tierRadios.forEach(r => r.addEventListener("change", recalc));
+  recalc();
+
+  const form = document.getElementById("orderForm");
+  const msg = document.getElementById("msg");
+  const submitBtn = document.getElementById("submitBtn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const { qty, unitPrice, subtotal, shipping, total } = recalc();
+
+    if (qty < 1) {
+      msg.textContent = "訂購數量至少為 1";
+      msg.className = "msg error";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    msg.textContent = "送出中...";
+    msg.className = "msg";
+
+    const tier = document.querySelector('input[name="tier"]:checked').value;
+
+    const payload = {
+      company_name: document.getElementById("company_name").value.trim(),
+      contact_name: document.getElementById("contact_name").value.trim(),
+      mobile: document.getElementById("mobile").value.trim(),
+      phone: document.getElementById("phone").value.trim() || null,
+      email: document.getElementById("email").value.trim() || null,
+      receiver_name: document.getElementById("receiver_name").value.trim() || null,
+      receiver_address: document.getElementById("receiver_address").value.trim() || null,
+      tax_id: document.getElementById("tax_id").value.trim() || null,
+      invoice_title: document.getElementById("invoice_title").value.trim() || null,
+      product_tier: tier,
+      unit_price: unitPrice,
+      quantity: qty,
+      subtotal: subtotal,
+      shipping_fee: shipping,
+      total: total,
+      note: document.getElementById("note").value.trim() || null
+    };
+
+    const { error } = await supabaseClient.from("orders").insert(payload);
+
+    if (error) {
+      msg.textContent = "送出失敗：" + error.message;
+      msg.className = "msg error";
+      submitBtn.disabled = false;
+    } else {
+      msg.textContent = "訂購單已送出！將有專人與您電話確認。";
+      msg.className = "msg ok";
+      form.reset();
+      recalc();
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>

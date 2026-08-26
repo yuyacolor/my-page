@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>訂單管理後台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+         background:#f5f5f7; margin:0; padding:20px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:20px; }
+  h1 { font-size:20px; margin:0; }
+  .who { font-size:13px; color:#666; }
+  .who a { color:#c0392b; text-decoration:none; margin-left:10px; }
+
+  .summary { display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .sum-card { background:#fff; border-radius:8px; padding:12px 18px;
+              box-shadow:0 1px 6px rgba(0,0,0,0.06); min-width:110px; }
+  .sum-card .n { font-size:22px; font-weight:bold; }
+  .sum-card .l { font-size:12px; color:#888; }
+
+  table { width:100%; border-collapse:collapse; background:#fff; border-radius:10px;
+          overflow:hidden; box-shadow:0 1px 8px rgba(0,0,0,0.06); }
+  th, td { padding:10px 12px; font-size:13px; text-align:left; border-bottom:1px solid #eee;
+            white-space:nowrap; }
+  th { background:#fafafa; color:#666; font-weight:600; }
+  tr:last-child td { border-bottom:none; }
+
+  .status-badge { padding:3px 10px; border-radius:20px; font-size:12px; display:inline-block; }
+  .status-pending   { background:#fff3cd; color:#856404; }
+  .status-confirmed { background:#d1ecf1; color:#0c5460; }
+  .status-shipped   { background:#d4edda; color:#155724; }
+  .status-cancelled { background:#f8d7da; color:#721c24; }
+
+  select { padding:5px 8px; border-radius:6px; border:1px solid #ccc; font-size:12px; }
+  .save-btn { padding:5px 10px; border:none; border-radius:6px; background:#0d6efd;
+              color:#fff; font-size:12px; cursor:pointer; margin-left:6px; }
+  .save-btn:hover { background:#0b5ed7; }
+
+  .loading, .empty { text-align:center; padding:40px; color:#999; }
+  .note-cell { max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📋 訂單管理後台</h1>
+  <div class="who" id="who">載入中...</div>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div id="tableWrap">
+  <div class="loading">載入中...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  const STATUS_LABEL = {
+    pending: "待確認", confirmed: "已核銷", shipped: "已出貨", cancelled: "已取消"
+  };
+
+  const whoEl = document.getElementById("who");
+  const summaryEl = document.getElementById("summary");
+  const tableWrap = document.getElementById("tableWrap");
+
+  let currentOrders = [];
+
+  async function init() {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    if (!sessionData.session) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    whoEl.innerHTML = sessionData.session.user.email +
+      ' <a href="#" id="logoutLink">登出</a>';
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await supabaseClient.auth.signOut();
+      window.location.href = "index.html";
+    });
+
+    await loadOrders();
+  }
+
+  async function loadOrders() {
+    const { data, error } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      // 最常見原因：這個帳號不在 admins 名單裡，RLS 擋下讀取請求
+      tableWrap.innerHTML =
+        '<div class="empty">無法讀取訂單，可能是此帳號尚未被設定為管理員。<br>錯誤訊息：' +
+        error.message + '</div>';
+      summaryEl.innerHTML = "";
+      return;
+    }
+
+    currentOrders = data;
+    renderSummary(data);
+    renderTable(data);
+  }
+
+  function renderSummary(orders) {
+    const counts = { pending: 0, confirmed: 0, shipped: 0, cancelled: 0 };
+    let totalAmount = 0;
+    orders.forEach(o => {
+      counts[o.status] = (counts[o.status] || 0) + 1;
+      totalAmount += o.total || 0;
+    });
+
+    summaryEl.innerHTML = `
+      <div class="sum-card"><div class="n">${orders.length}</div><div class="l">總訂單數</div></div>
+      <div class="sum-card"><div class="n">${counts.pending || 0}</div><div class="l">待確認</div></div>
+      <div class="sum-card"><div class="n">${counts.confirmed || 0}</div><div class="l">已核銷</div></div>
+      <div class="sum-card"><div class="n">${counts.shipped || 0}</div><div class="l">已出貨</div></div>
+      <div class="sum-card"><div class="n">$${totalAmount.toLocaleString()}</div><div class="l">訂單總金額</div></div>
+    `;
+  }
+
+  function renderTable(orders) {
+    if (orders.length === 0) {
+      tableWrap.innerHTML = '<div class="empty">目前還沒有任何訂單</div>';
+      return;
+    }
+
+    const rows = orders.map(o => {
+      const dt = new Date(o.created_at);
+      const dtStr = dt.toLocaleString("zh-TW", { hour12: false });
+
+      const statusOptions = Object.keys(STATUS_LABEL).map(s =>
+        `<option value="${s}" ${s === o.status ? "selected" : ""}>${STATUS_LABEL[s]}</option>`
+      ).join("");
+
+      return `
+        <tr data-id="${o.id}">
+          <td>${dtStr}</td>
+          <td>${escapeHtml(o.company_name)}</td>
+          <td>${escapeHtml(o.contact_name)}</td>
+          <td>${escapeHtml(o.mobile)}</td>
+          <td>${o.quantity} 盒（$${o.unit_price}）</td>
+          <td>$${o.total.toLocaleString()}</td>
+          <td class="note-cell" title="${escapeHtml(o.note || '')}">${escapeHtml(o.note || '-')}</td>
+          <td>
+            <select class="statusSelect">${statusOptions}</select>
+            <button class="save-btn">更新</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    tableWrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>送出時間</th><th>公司名稱</th><th>聯絡人</th><th>手機</th>
+            <th>品項</th><th>總計</th><th>備註</th><th>狀態</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+
+    tableWrap.querySelectorAll(".save-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const tr = e.target.closest("tr");
+        const id = tr.dataset.id;
+        const newStatus = tr.querySelector(".statusSelect").value;
+
+        btn.disabled = true;
+        btn.textContent = "更新中";
+
+        const { error } = await supabaseClient
+          .from("orders")
+          .update({ status: newStatus })
+          .eq("id", id);
+
+        if (error) {
+          alert("更新失敗：" + error.message);
+          btn.disabled = false;
+          btn.textContent = "更新";
+        } else {
+          await loadOrders();
+        }
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  init();
+</script>
+
+</body>
+</html>
